@@ -1,0 +1,14 @@
+{
+  "USER_NOT_FOUND": "ไม่พบผู้ใช้",
+  "BROKER_NOT_FOUND": "ไม่พบโบรกเกอร์",
+  "REVIEW_NOT_FOUND": "ไม่พบรีวิว",
+  "EMAIL_ALREADY_EXISTS": "อีเมลนี้ถูกใช้งานแล้ว",
+  "ALREADY_REVIEWED": "คุณเคยรีวิวโบรกเกอร์นี้แล้ว",
+  "INVALID_CREDENTIALS": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+  "INVALID_REFRESH_TOKEN": "Refresh token หมดอายุหรือไม่ถูกต้อง",
+  "INVALID_RESET_TOKEN": "Token หมดอายุหรือไม่ถูกต้อง",
+  "PASSWORDS_DO_NOT_MATCH": "รหัสผ่านไม่ตรงกัน",
+  "SLUG_ALREADY_TAKEN": "Slug นี้ถูกใช้งานแล้ว",
+  "REVIEW_FORBIDDEN_EDIT": "คุณสามารถแก้ไขเฉพาะรีวิวของตัวเองเท่านั้น",
+  "REVIEW_FORBIDDEN_DELETE": "คุณสามารถลบเฉพาะรีวิวของตัวเองเท่านั้น"
+}

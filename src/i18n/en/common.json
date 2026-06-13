@@ -1,0 +1,14 @@
+{
+  "USER_NOT_FOUND": "User not found",
+  "BROKER_NOT_FOUND": "Broker not found",
+  "REVIEW_NOT_FOUND": "Review not found",
+  "EMAIL_ALREADY_EXISTS": "Email already registered",
+  "ALREADY_REVIEWED": "You have already reviewed this broker",
+  "INVALID_CREDENTIALS": "Invalid email or password",
+  "INVALID_REFRESH_TOKEN": "Invalid or expired refresh token",
+  "INVALID_RESET_TOKEN": "Invalid or expired reset token",
+  "PASSWORDS_DO_NOT_MATCH": "Passwords do not match",
+  "SLUG_ALREADY_TAKEN": "Slug is already taken",
+  "REVIEW_FORBIDDEN_EDIT": "You can only edit your own review",
+  "REVIEW_FORBIDDEN_DELETE": "You can only delete your own review"
+}
