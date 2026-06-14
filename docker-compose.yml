@@ -37,17 +37,23 @@ services:
     container_name: woxa_migrate
     command: node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js
     env_file: .env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
     depends_on:
       postgres:
         condition: service_healthy
 
   app:
     build: .
-    container_name: woxa_app
+    container_name: woxa_backend
     restart: unless-stopped
     env_file: .env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
     ports:
-      - '${PORT:-3000}:3000'
+      - '${PORT:-4000}:${PORT:-4000}'
     depends_on:
       migrate:
         condition: service_completed_successfully

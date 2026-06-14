@@ -8,9 +8,11 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes, randomUUID } from 'crypto';
+import ms from 'ms';
 import * as bcrypt from 'bcrypt';
 import { JwtConfig } from '@config/jwt.config';
 import { UsersService } from '../users/users.service';
+import { SessionsService } from './sessions.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -28,6 +30,7 @@ export class AuthService {
 
   constructor(
     private readonly usersService: UsersService,
+    private readonly sessionsService: SessionsService,
     private readonly jwtService: JwtService,
     configService: ConfigService,
   ) {
@@ -38,25 +41,34 @@ export class AuthService {
     const existing = await this.usersService.findByEmail(dto.email, true);
     if (existing) throw new ConflictException('common.EMAIL_ALREADY_EXISTS');
 
-    const id = randomUUID();
+    const userId = randomUUID();
+    const sessionId = randomUUID();
     const password = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const { accessToken, refreshToken, refreshTokenHash } = this.makeTokenPair(
-      id,
+      userId,
       dto.email,
+      sessionId,
     );
 
     await this.usersService.create({
-      id,
+      id: userId,
       fullName: dto.fullName,
       email: dto.email,
       password,
-      refreshTokenHash,
+      agreeToTerms: dto.agreeToTerms,
+    });
+
+    await this.sessionsService.create({
+      id: sessionId,
+      userId,
+      tokenHash: refreshTokenHash,
+      expiresAt: new Date(Date.now() + ms(this.jwtCfg.refreshExpiresIn)),
     });
 
     return {
       accessToken,
       refreshToken,
-      user: { id, fullName: dto.fullName, email: dto.email },
+      user: { id: userId, fullName: dto.fullName, email: dto.email },
     };
   }
 
@@ -65,11 +77,19 @@ export class AuthService {
     const valid = user && (await bcrypt.compare(dto.password, user.password));
     if (!valid) throw new UnauthorizedException('common.INVALID_CREDENTIALS');
 
+    const sessionId = randomUUID();
     const { accessToken, refreshToken, refreshTokenHash } = this.makeTokenPair(
       user.id,
       user.email,
+      sessionId,
     );
-    await this.usersService.updateRefreshToken(user.id, refreshTokenHash);
+
+    await this.sessionsService.create({
+      id: sessionId,
+      userId: user.id,
+      tokenHash: refreshTokenHash,
+      expiresAt: new Date(Date.now() + ms(this.jwtCfg.refreshExpiresIn)),
+    });
 
     return {
       accessToken,
@@ -78,12 +98,12 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string): Promise<void> {
-    await this.usersService.updateRefreshToken(userId, null);
+  async logout(sessionId: string): Promise<void> {
+    await this.sessionsService.deleteById(sessionId);
   }
 
   async refresh(dto: RefreshTokenDto): Promise<AuthTokensDto> {
-    let payload: { sub: string };
+    let payload: { sub: string; sid: string };
     try {
       payload = this.jwtService.verify(dto.refreshToken, {
         secret: this.jwtCfg.refreshSecret,
@@ -92,23 +112,27 @@ export class AuthService {
       throw new UnauthorizedException('common.INVALID_REFRESH_TOKEN');
     }
 
-    const user = await this.usersService.findById(payload.sub);
-    if (!user?.refreshTokenHash)
-      throw new UnauthorizedException('common.INVALID_REFRESH_TOKEN');
+    const session = await this.sessionsService.findById(payload.sid);
+    if (!session) throw new UnauthorizedException('common.INVALID_REFRESH_TOKEN');
 
-    const incoming = createHash('sha256')
-      .update(dto.refreshToken)
-      .digest('hex');
-    if (incoming !== user.refreshTokenHash) {
-      await this.usersService.updateRefreshToken(user.id, null);
+    const incoming = createHash('sha256').update(dto.refreshToken).digest('hex');
+
+    if (incoming !== session.tokenHash) {
+      // Reuse detected — token was already rotated, possible theft
+      await this.sessionsService.deleteById(session.id);
       throw new UnauthorizedException('common.INVALID_REFRESH_TOKEN');
     }
 
+    const user = await this.usersService.findById(payload.sub);
+    if (!user) throw new UnauthorizedException('common.INVALID_REFRESH_TOKEN');
+
+    // Rotate: same sessionId, new token pair
     const { accessToken, refreshToken, refreshTokenHash } = this.makeTokenPair(
       user.id,
       user.email,
+      session.id,
     );
-    await this.usersService.updateRefreshToken(user.id, refreshTokenHash);
+    await this.sessionsService.rotate(session.id, refreshTokenHash);
 
     return {
       accessToken,
@@ -129,7 +153,7 @@ export class AuthService {
       new Date(Date.now() + RESET_TOKEN_TTL_MS),
     );
 
-    // DEV: log token to console. Replace this block with Nodemailer/SendGrid in production.
+    // DEV: log token to console. Replace with Nodemailer/SendGrid in production.
     this.logger.warn(`[DEV] Password reset requested for: ${user.email}`);
     this.logger.warn(`[DEV] Token: ${rawToken}`);
     this.logger.warn(
@@ -154,15 +178,18 @@ export class AuthService {
       user.id,
       await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS),
     );
+
+    // Invalidate all sessions after password reset
+    await this.sessionsService.deleteAllByUserId(user.id);
   }
 
-  private makeTokenPair(userId: string, email: string) {
+  private makeTokenPair(userId: string, email: string, sessionId: string) {
     const accessToken = this.jwtService.sign(
-      { sub: userId, email },
+      { sub: userId, email, sid: sessionId },
       { secret: this.jwtCfg.secret, expiresIn: this.jwtCfg.accessExpiresIn },
     );
     const refreshToken = this.jwtService.sign(
-      { sub: userId },
+      { sub: userId, sid: sessionId },
       {
         secret: this.jwtCfg.refreshSecret,
         expiresIn: this.jwtCfg.refreshExpiresIn,

@@ -23,8 +23,8 @@ export class User {
   @Column()
   password!: string;
 
-  @Column({ nullable: true, type: 'varchar' })
-  refreshTokenHash!: string | null;
+  @Column({ default: false })
+  agreeToTerms!: boolean;
 
   @Column({ nullable: true, type: 'varchar' })
   passwordResetTokenHash!: string | null;
