@@ -11,7 +11,7 @@ const mockUser: User = {
   fullName: 'John Doe',
   email: 'john@example.com',
   password: '$2b$12$hashed',
-  refreshTokenHash: null,
+  agreeToTerms: true,
   passwordResetTokenHash: null,
   passwordResetExpiresAt: null,
   createdAt: now,
@@ -90,7 +90,7 @@ describe('UsersService', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: '$2b$12$hashed',
-        refreshTokenHash: 'hash',
+        agreeToTerms: true,
       });
 
       expect(mockRepo.save).toHaveBeenCalledWith(
@@ -98,26 +98,6 @@ describe('UsersService', () => {
           passwordResetTokenHash: null,
           passwordResetExpiresAt: null,
         }),
-      );
-    });
-  });
-
-  describe('updateRefreshToken', () => {
-    it('updates refreshTokenHash to given hash', async () => {
-      mockRepo.update.mockResolvedValue(undefined);
-      await service.updateRefreshToken('uuid-1', 'new-hash');
-      expect(mockRepo.update).toHaveBeenCalledWith(
-        { id: 'uuid-1' },
-        { refreshTokenHash: 'new-hash' },
-      );
-    });
-
-    it('clears refreshTokenHash when null is passed', async () => {
-      mockRepo.update.mockResolvedValue(undefined);
-      await service.updateRefreshToken('uuid-1', null);
-      expect(mockRepo.update).toHaveBeenCalledWith(
-        { id: 'uuid-1' },
-        { refreshTokenHash: null },
       );
     });
   });
@@ -135,14 +115,11 @@ describe('UsersService', () => {
         updatedAt: mockUser.updatedAt,
       });
       expect(result).not.toHaveProperty('password');
-      expect(result).not.toHaveProperty('refreshTokenHash');
     });
 
     it('throws NotFoundException when user not found', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.getProfile('bad-id')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getProfile('bad-id')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -152,35 +129,25 @@ describe('UsersService', () => {
       mockRepo.update.mockResolvedValue(undefined);
       mockRepo.findOne.mockResolvedValue(updated);
 
-      const result = await service.updateProfile('uuid-1', {
-        fullName: 'Jane Doe',
-      });
+      const result = await service.updateProfile('uuid-1', { fullName: 'Jane Doe' });
 
-      expect(mockRepo.update).toHaveBeenCalledWith(
-        { id: 'uuid-1' },
-        { fullName: 'Jane Doe' },
-      );
+      expect(mockRepo.update).toHaveBeenCalledWith({ id: 'uuid-1' }, { fullName: 'Jane Doe' });
       expect(result.fullName).toBe('Jane Doe');
     });
   });
 
   describe('softDelete', () => {
-    it('clears refresh token then soft-deletes', async () => {
-      mockRepo.update.mockResolvedValue(undefined);
+    it('soft-deletes the user', async () => {
       mockRepo.softDelete.mockResolvedValue(undefined);
 
       await service.softDelete('uuid-1');
 
-      expect(mockRepo.update).toHaveBeenCalledWith(
-        { id: 'uuid-1' },
-        { refreshTokenHash: null },
-      );
       expect(mockRepo.softDelete).toHaveBeenCalledWith({ id: 'uuid-1' });
     });
   });
 
   describe('resetPassword', () => {
-    it('updates password and clears all token fields', async () => {
+    it('updates password and clears reset token fields', async () => {
       mockRepo.update.mockResolvedValue(undefined);
 
       await service.resetPassword('uuid-1', '$2b$12$new-hash');
@@ -189,7 +156,6 @@ describe('UsersService', () => {
         { id: 'uuid-1' },
         {
           password: '$2b$12$new-hash',
-          refreshTokenHash: null,
           passwordResetTokenHash: null,
           passwordResetExpiresAt: null,
         },

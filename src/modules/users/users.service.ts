@@ -30,7 +30,6 @@ export class UsersService {
     fullName: string;
     email: string;
     password: string;
-    refreshTokenHash: string;
     agreeToTerms: boolean;
   }): Promise<User> {
     return this.userRepo.save({
@@ -38,10 +37,6 @@ export class UsersService {
       passwordResetTokenHash: null,
       passwordResetExpiresAt: null,
     });
-  }
-
-  async updateRefreshToken(id: string, hash: string | null): Promise<void> {
-    await this.userRepo.update({ id }, { refreshTokenHash: hash });
   }
 
   async setPasswordResetToken(
@@ -60,7 +55,6 @@ export class UsersService {
       { id },
       {
         password: hashedPassword,
-        refreshTokenHash: null,
         passwordResetTokenHash: null,
         passwordResetExpiresAt: null,
       },
@@ -88,7 +82,6 @@ export class UsersService {
   }
 
   async softDelete(id: string): Promise<void> {
-    await this.userRepo.update({ id }, { refreshTokenHash: null });
     await this.userRepo.softDelete({ id });
   }
 }

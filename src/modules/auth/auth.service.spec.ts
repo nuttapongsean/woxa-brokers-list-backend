@@ -10,6 +10,7 @@ import { createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { SessionsService } from './sessions.service';
 
 jest.mock('bcrypt', () => ({
   hash: jest.fn().mockResolvedValue('$2b$12$hashed'),
@@ -23,7 +24,6 @@ const mockUser = {
   fullName: 'John Doe',
   email: 'john@example.com',
   password: '$2b$12$hashed',
-  refreshTokenHash: null as string | null,
   passwordResetTokenHash: null as string | null,
   passwordResetExpiresAt: null as Date | null,
   createdAt: now,
@@ -31,14 +31,31 @@ const mockUser = {
   deletedAt: null,
 };
 
+const mockSession = {
+  id: 'session-uuid-1',
+  userId: 'uuid-1',
+  tokenHash: 'stored-hash',
+  deviceInfo: null,
+  expiresAt: new Date(Date.now() + 86400000),
+  lastUsedAt: now,
+  createdAt: now,
+};
+
 const mockUsersService = {
   findByEmail: jest.fn(),
   findById: jest.fn(),
   findByResetTokenHash: jest.fn(),
   create: jest.fn(),
-  updateRefreshToken: jest.fn(),
   setPasswordResetToken: jest.fn(),
   resetPassword: jest.fn(),
+};
+
+const mockSessionsService = {
+  create: jest.fn(),
+  findById: jest.fn(),
+  rotate: jest.fn(),
+  deleteById: jest.fn(),
+  deleteAllByUserId: jest.fn(),
 };
 
 const mockJwtService = {
@@ -63,6 +80,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: UsersService, useValue: mockUsersService },
+        { provide: SessionsService, useValue: mockSessionsService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
@@ -71,26 +89,27 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     jest.clearAllMocks();
 
-    // default: sign returns deterministic tokens
     mockJwtService.sign
       .mockReturnValueOnce('mock-access-token')
       .mockReturnValueOnce('mock-refresh-token');
   });
 
-  // helper: SHA-256 hash of 'mock-refresh-token'
+  // SHA-256 hash of 'mock-refresh-token'
   const expectedRefreshHash = createHash('sha256')
     .update('mock-refresh-token')
     .digest('hex');
 
   describe('register', () => {
-    it('creates user and returns token pair', async () => {
+    it('creates user + session and returns token pair', async () => {
       mockUsersService.findByEmail.mockResolvedValue(null);
       mockUsersService.create.mockResolvedValue(mockUser);
+      mockSessionsService.create.mockResolvedValue(mockSession);
 
       const result = await service.register({
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'P@ssw0rd!',
+        agreeToTerms: true,
       });
 
       expect(result.accessToken).toBe('mock-access-token');
@@ -101,8 +120,11 @@ describe('AuthService', () => {
           fullName: 'John Doe',
           email: 'john@example.com',
           password: '$2b$12$hashed',
-          refreshTokenHash: expectedRefreshHash,
+          agreeToTerms: true,
         }),
+      );
+      expect(mockSessionsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tokenHash: expectedRefreshHash }),
       );
     });
 
@@ -114,6 +136,7 @@ describe('AuthService', () => {
           fullName: 'John Doe',
           email: 'john@example.com',
           password: 'P@ssw0rd!',
+          agreeToTerms: true,
         }),
       ).rejects.toThrow(ConflictException);
 
@@ -122,10 +145,10 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('returns token pair with valid credentials', async () => {
+    it('returns token pair and creates session with valid credentials', async () => {
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+      mockSessionsService.create.mockResolvedValue(mockSession);
 
       const result = await service.login({
         email: 'john@example.com',
@@ -134,9 +157,8 @@ describe('AuthService', () => {
 
       expect(result.accessToken).toBe('mock-access-token');
       expect(result.user.id).toBe('uuid-1');
-      expect(mockUsersService.updateRefreshToken).toHaveBeenCalledWith(
-        'uuid-1',
-        expectedRefreshHash,
+      expect(mockSessionsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'uuid-1', tokenHash: expectedRefreshHash }),
       );
     });
 
@@ -159,36 +181,30 @@ describe('AuthService', () => {
   });
 
   describe('logout', () => {
-    it('clears the stored refresh token', async () => {
-      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+    it('deletes the session by sessionId', async () => {
+      mockSessionsService.deleteById.mockResolvedValue(undefined);
 
-      await service.logout('uuid-1');
+      await service.logout('session-uuid-1');
 
-      expect(mockUsersService.updateRefreshToken).toHaveBeenCalledWith(
-        'uuid-1',
-        null,
-      );
+      expect(mockSessionsService.deleteById).toHaveBeenCalledWith('session-uuid-1');
     });
   });
 
   describe('refresh', () => {
-    it('returns new token pair and rotates the refresh token', async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1' });
-      mockUsersService.findById.mockResolvedValue({
-        ...mockUser,
-        refreshTokenHash: createHash('sha256')
-          .update('incoming-refresh-token')
-          .digest('hex'),
-      });
-      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+    it('returns new token pair and rotates the session', async () => {
+      const incomingToken = 'incoming-refresh-token';
+      const incomingHash = createHash('sha256').update(incomingToken).digest('hex');
 
-      const result = await service.refresh({
-        refreshToken: 'incoming-refresh-token',
-      });
+      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1', sid: 'session-uuid-1' });
+      mockSessionsService.findById.mockResolvedValue({ ...mockSession, tokenHash: incomingHash });
+      mockUsersService.findById.mockResolvedValue(mockUser);
+      mockSessionsService.rotate.mockResolvedValue(undefined);
+
+      const result = await service.refresh({ refreshToken: incomingToken });
 
       expect(result.accessToken).toBe('mock-access-token');
-      expect(mockUsersService.updateRefreshToken).toHaveBeenCalledWith(
-        'uuid-1',
+      expect(mockSessionsService.rotate).toHaveBeenCalledWith(
+        'session-uuid-1',
         expectedRefreshHash,
       );
     });
@@ -203,34 +219,28 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('throws UnauthorizedException when user has no stored refresh token', async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1' });
-      mockUsersService.findById.mockResolvedValue({
-        ...mockUser,
-        refreshTokenHash: null,
-      });
+    it('throws UnauthorizedException when session not found', async () => {
+      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1', sid: 'session-uuid-1' });
+      mockSessionsService.findById.mockResolvedValue(null);
 
       await expect(
         service.refresh({ refreshToken: 'some-token' }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('revokes all sessions and throws on token reuse', async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1' });
-      mockUsersService.findById.mockResolvedValue({
-        ...mockUser,
-        refreshTokenHash: 'stored-hash-that-does-not-match',
+    it('deletes session and throws on token reuse (hash mismatch)', async () => {
+      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1', sid: 'session-uuid-1' });
+      mockSessionsService.findById.mockResolvedValue({
+        ...mockSession,
+        tokenHash: 'hash-that-does-not-match',
       });
-      mockUsersService.updateRefreshToken.mockResolvedValue(undefined);
+      mockSessionsService.deleteById.mockResolvedValue(undefined);
 
       await expect(
         service.refresh({ refreshToken: 'reused-token' }),
       ).rejects.toThrow(UnauthorizedException);
 
-      expect(mockUsersService.updateRefreshToken).toHaveBeenCalledWith(
-        'uuid-1',
-        null,
-      );
+      expect(mockSessionsService.deleteById).toHaveBeenCalledWith('session-uuid-1');
     });
   });
 
@@ -253,8 +263,8 @@ describe('AuthService', () => {
 
       expect(mockUsersService.setPasswordResetToken).toHaveBeenCalledWith(
         'uuid-1',
-        expect.any(String), // SHA-256 hash
-        expect.any(Date),   // expiry ~1 hour from now
+        expect.any(String),
+        expect.any(Date),
       );
     });
   });
@@ -285,7 +295,7 @@ describe('AuthService', () => {
     it('throws BadRequestException when token is expired', async () => {
       mockUsersService.findByResetTokenHash.mockResolvedValue({
         ...mockUser,
-        passwordResetExpiresAt: new Date(Date.now() - 1000), // past
+        passwordResetExpiresAt: new Date(Date.now() - 1000),
       });
 
       await expect(
@@ -297,12 +307,13 @@ describe('AuthService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('resets password successfully with valid token', async () => {
+    it('resets password and invalidates all sessions', async () => {
       mockUsersService.findByResetTokenHash.mockResolvedValue({
         ...mockUser,
-        passwordResetExpiresAt: new Date(Date.now() + 60_000), // not expired
+        passwordResetExpiresAt: new Date(Date.now() + 60_000),
       });
       mockUsersService.resetPassword.mockResolvedValue(undefined);
+      mockSessionsService.deleteAllByUserId.mockResolvedValue(undefined);
 
       await service.resetPassword({
         token: 'valid-token',
@@ -310,10 +321,8 @@ describe('AuthService', () => {
         confirmPassword: 'NewP@ss1',
       });
 
-      expect(mockUsersService.resetPassword).toHaveBeenCalledWith(
-        'uuid-1',
-        '$2b$12$hashed',
-      );
+      expect(mockUsersService.resetPassword).toHaveBeenCalledWith('uuid-1', '$2b$12$hashed');
+      expect(mockSessionsService.deleteAllByUserId).toHaveBeenCalledWith('uuid-1');
     });
   });
 });
