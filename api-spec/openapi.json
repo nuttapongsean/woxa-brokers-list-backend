@@ -1,0 +1,1264 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Register a new account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Login with email and password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Logout — invalidates the refresh token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokensDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Issue a new access token using a refresh token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Request a password reset link",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Reset password using the token from the reset email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "operationId": "UsersController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get own profile",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update own profile",
+        "tags": [
+          "users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_deleteAccount",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete own account (soft delete)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/brokers": {
+      "get": {
+        "operationId": "BrokersController_findAll",
+        "parameters": [
+          {
+            "name": "brokerType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cfd",
+                "bond",
+                "stock",
+                "crypto"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List all brokers (paginated, filterable by type)",
+        "tags": [
+          "brokers"
+        ]
+      },
+      "post": {
+        "operationId": "BrokersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBrokerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new broker",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/slugs": {
+      "get": {
+        "operationId": "BrokersController_findSlugs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List all broker slugs (for static generation)",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/types": {
+      "get": {
+        "operationId": "BrokersController_findTypes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List distinct broker types that have at least one broker",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/{slug}": {
+      "get": {
+        "operationId": "BrokersController_findOne",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get a single broker by slug (with features, metrics, markets)",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/{id}": {
+      "patch": {
+        "operationId": "BrokersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBrokerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a broker",
+        "tags": [
+          "brokers"
+        ]
+      },
+      "delete": {
+        "operationId": "BrokersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soft-delete a broker",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/reviews": {
+      "post": {
+        "operationId": "ReviewsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a review for a broker",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/reviews/broker/{brokerId}": {
+      "get": {
+        "operationId": "ReviewsController_findByBroker",
+        "parameters": [
+          {
+            "name": "brokerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get all reviews for a broker (with reviewer name)",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/reviews/{id}": {
+      "get": {
+        "operationId": "ReviewsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get a single review with user and broker details",
+        "tags": [
+          "reviews"
+        ]
+      },
+      "patch": {
+        "operationId": "ReviewsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update own review",
+        "tags": [
+          "reviews"
+        ]
+      },
+      "delete": {
+        "operationId": "ReviewsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete own review",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthcheckController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Healthcheck"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Woxa Brokers List API",
+    "description": "REST API for managing financial brokers",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "example": "john@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "P@ssw0rd!",
+            "minLength": 8
+          },
+          "agreeToTerms": {
+            "type": "boolean",
+            "example": true,
+            "description": "Must be true to accept terms"
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "password",
+          "agreeToTerms"
+        ]
+      },
+      "AuthUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email"
+        ]
+      },
+      "AuthTokensDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserDto"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "user"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "john@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "P@ssw0rd!"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "john@example.com"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token received via email (console log in dev)"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8
+          },
+          "confirmPassword": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "token",
+          "newPassword",
+          "confirmPassword"
+        ]
+      },
+      "UserProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "Jane Doe"
+          }
+        },
+        "required": [
+          "fullName"
+        ]
+      },
+      "CreateBrokerFeatureDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Zero Commission"
+          },
+          "description": {
+            "type": "string",
+            "example": "Trade with zero commission on all instruments."
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0,
+            "default": 0
+          }
+        },
+        "required": [
+          "title",
+          "description"
+        ]
+      },
+      "CreateBrokerMetricsDto": {
+        "type": "object",
+        "properties": {
+          "aumGrowthYoY": {
+            "type": "string",
+            "example": "+34.2%"
+          },
+          "liquidityAccess": {
+            "type": "string",
+            "example": "$18.4B"
+          },
+          "liquidityAccessSub": {
+            "type": "string",
+            "example": "Daily Average"
+          },
+          "clientRetention": {
+            "type": "string",
+            "example": "94.7%"
+          },
+          "clientRetentionPeriod": {
+            "type": "string",
+            "example": "12-month rolling"
+          }
+        }
+      },
+      "CreateBrokerMarketsDto": {
+        "type": "object",
+        "properties": {
+          "forexPairs": {
+            "type": "number",
+            "example": 100
+          },
+          "indices": {
+            "type": "number",
+            "example": 20
+          },
+          "commodities": {
+            "type": "number",
+            "example": 15
+          },
+          "equities": {
+            "type": "number",
+            "example": 500
+          },
+          "sovereignBonds": {
+            "type": "number",
+            "example": 50
+          },
+          "cryptoEtps": {
+            "type": "number",
+            "example": 30
+          }
+        }
+      },
+      "CreateBrokerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Exness"
+          },
+          "slug": {
+            "type": "string",
+            "example": "exness",
+            "description": "Auto-generated from name if omitted"
+          },
+          "description": {
+            "type": "string",
+            "example": "A leading multi-asset broker."
+          },
+          "logoUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/logos/exness.png"
+          },
+          "website": {
+            "type": "string",
+            "example": "https://www.exness.com"
+          },
+          "brokerType": {
+            "type": "string",
+            "enum": [
+              "cfd",
+              "bond",
+              "stock",
+              "crypto"
+            ],
+            "example": "cfd"
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/images/exness-cover.png"
+          },
+          "badge": {
+            "type": "string",
+            "example": "Premium TIER"
+          },
+          "tag": {
+            "type": "string",
+            "example": "SEC Regulated"
+          },
+          "icon": {
+            "type": "string",
+            "example": "shield"
+          },
+          "grade": {
+            "type": "string",
+            "example": "SOVEREIGN GRADE A+"
+          },
+          "rating": {
+            "type": "number",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "prospectusUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/docs/prospectus.pdf"
+          },
+          "longDescription": {
+            "type": "string",
+            "example": "Exness is a global multi-asset broker..."
+          },
+          "contactAddress": {
+            "type": "string",
+            "example": "123 Finance Street, Bangkok, Thailand"
+          },
+          "contactEmail": {
+            "type": "string",
+            "example": "support@exness.com"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateBrokerFeatureDto"
+            }
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/CreateBrokerMetricsDto"
+          },
+          "markets": {
+            "$ref": "#/components/schemas/CreateBrokerMarketsDto"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "logoUrl",
+          "website",
+          "brokerType"
+        ]
+      },
+      "UpdateBrokerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Exness"
+          },
+          "slug": {
+            "type": "string",
+            "example": "exness",
+            "description": "Auto-generated from name if omitted"
+          },
+          "description": {
+            "type": "string",
+            "example": "A leading multi-asset broker."
+          },
+          "logoUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/logos/exness.png"
+          },
+          "website": {
+            "type": "string",
+            "example": "https://www.exness.com"
+          },
+          "brokerType": {
+            "type": "string",
+            "enum": [
+              "cfd",
+              "bond",
+              "stock",
+              "crypto"
+            ],
+            "example": "cfd"
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/images/exness-cover.png"
+          },
+          "badge": {
+            "type": "string",
+            "example": "Premium TIER"
+          },
+          "tag": {
+            "type": "string",
+            "example": "SEC Regulated"
+          },
+          "icon": {
+            "type": "string",
+            "example": "shield"
+          },
+          "grade": {
+            "type": "string",
+            "example": "SOVEREIGN GRADE A+"
+          },
+          "rating": {
+            "type": "number",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "prospectusUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/docs/prospectus.pdf"
+          },
+          "longDescription": {
+            "type": "string",
+            "example": "Exness is a global multi-asset broker..."
+          },
+          "contactAddress": {
+            "type": "string",
+            "example": "123 Finance Street, Bangkok, Thailand"
+          },
+          "contactEmail": {
+            "type": "string",
+            "example": "support@exness.com"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateBrokerFeatureDto"
+            }
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/CreateBrokerMetricsDto"
+          },
+          "markets": {
+            "$ref": "#/components/schemas/CreateBrokerMarketsDto"
+          }
+        }
+      },
+      "CreateReviewDto": {
+        "type": "object",
+        "properties": {
+          "brokerId": {
+            "type": "string",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "rating": {
+            "type": "number",
+            "example": 4,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string",
+            "example": "Great spreads and fast execution."
+          }
+        },
+        "required": [
+          "brokerId",
+          "rating"
+        ]
+      },
+      "UpdateReviewDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "example": 4,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string",
+            "example": "Great spreads and fast execution."
+          }
+        }
+      }
+    }
+  }
+}
