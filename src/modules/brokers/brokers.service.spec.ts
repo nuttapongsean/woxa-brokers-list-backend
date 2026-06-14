@@ -12,6 +12,7 @@ const mockBroker: Broker = {
   logoUrl: 'https://cdn.example.com/exness.png',
   website: 'https://www.exness.com',
   brokerType: BrokerType.CFD,
+  features: [],
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,

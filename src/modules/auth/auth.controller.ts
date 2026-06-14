@@ -43,9 +43,9 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout — invalidates the refresh token' })
-  logout(@CurrentUser() user: { id: string }): Promise<void> {
-    return this.authService.logout(user.id);
+  @ApiOperation({ summary: 'Logout — invalidates the current session' })
+  logout(@CurrentUser() user: { id: string; sid: string }): Promise<void> {
+    return this.authService.logout(user.sid);
   }
 
   @Public()

@@ -27,9 +27,6 @@ export class User {
   agreeToTerms!: boolean;
 
   @Column({ nullable: true, type: 'varchar' })
-  refreshTokenHash!: string | null;
-
-  @Column({ nullable: true, type: 'varchar' })
   passwordResetTokenHash!: string | null;
 
   @Column({ nullable: true, type: 'timestamp' })
