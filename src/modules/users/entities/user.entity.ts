@@ -23,6 +23,9 @@ export class User {
   @Column()
   password!: string;
 
+  @Column({ default: false })
+  agreeToTerms!: boolean;
+
   @Column({ nullable: true, type: 'varchar' })
   refreshTokenHash!: string | null;
 
