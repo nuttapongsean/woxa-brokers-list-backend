@@ -51,6 +51,7 @@ export class AuthService {
       email: dto.email,
       password,
       refreshTokenHash,
+      agreeToTerms: dto.agreeToTerms,
     });
 
     return {

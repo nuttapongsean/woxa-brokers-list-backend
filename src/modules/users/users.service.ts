@@ -31,6 +31,7 @@ export class UsersService {
     email: string;
     password: string;
     refreshTokenHash: string;
+    agreeToTerms: boolean;
   }): Promise<User> {
     return this.userRepo.save({
       ...data,
