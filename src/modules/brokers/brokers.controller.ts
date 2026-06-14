@@ -36,10 +36,24 @@ export class BrokersController {
   }
 
   @Public()
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a single broker by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.brokersService.findOne(id);
+  @Get('slugs')
+  @ApiOperation({ summary: 'List all broker slugs (for static generation)' })
+  findSlugs() {
+    return this.brokersService.findSlugs();
+  }
+
+  @Public()
+  @Get('types')
+  @ApiOperation({ summary: 'List distinct broker types that have at least one broker' })
+  findTypes() {
+    return this.brokersService.findTypes();
+  }
+
+  @Public()
+  @Get(':slug')
+  @ApiOperation({ summary: 'Get a single broker by slug (with features, metrics, markets)' })
+  findOne(@Param('slug') slug: string) {
+    return this.brokersService.findOne(slug);
   }
 
   @Post()

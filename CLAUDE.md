@@ -192,10 +192,12 @@ All routes prefixed with `API_PREFIX` (default `api/v1`).
 ### Brokers `/brokers`
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| GET | `/brokers` | public | List (paginated, filterable by type) |
-| GET | `/brokers/:id` | public | Get one |
-| POST | `/brokers` | JWT | Create |
-| PATCH | `/brokers/:id` | JWT | Update |
+| GET | `/brokers` | public | List (paginated, filterable by type) — brokers table only |
+| GET | `/brokers/slugs` | public | All broker slugs — for static generation |
+| GET | `/brokers/types` | public | Distinct broker types that have at least one broker |
+| GET | `/brokers/:slug` | public | Detail with LEFT JOIN features, metrics, markets |
+| POST | `/brokers` | JWT | Create (optional nested features/metrics/markets) |
+| PATCH | `/brokers/:id` | JWT | Update (replaces features if provided; upserts metrics/markets) |
 | DELETE | `/brokers/:id` | JWT | Soft-delete |
 
 ### Reviews `/reviews`
@@ -229,16 +231,50 @@ users
 └── deletedAt        timestamp | null  (soft delete)
 
 brokers
-├── id          uuid PK
-├── name        varchar
-├── slug        varchar UNIQUE
+├── id               uuid PK
+├── name             varchar
+├── slug             varchar UNIQUE
+├── description      text
+├── logoUrl          varchar
+├── website          varchar
+├── brokerType       enum: cfd | bond | stock | crypto
+├── imageUrl         varchar | null  (BrokerCard cover photo)
+├── badge            varchar | null  (e.g. "Premium TIER")
+├── tag              varchar | null  (e.g. "SEC Regulated")
+├── icon             varchar | null  (lucide icon key)
+├── grade            varchar | null  (e.g. "SOVEREIGN GRADE A+")
+├── rating           smallint | null (1–5, cached/editorial)
+├── prospectusUrl    varchar | null
+├── longDescription  text | null
+├── contactAddress   varchar | null
+├── contactEmail     varchar | null
+├── createdAt        timestamp
+├── updatedAt        timestamp
+└── deletedAt        timestamp | null  (soft delete)
+
+broker_features  (one-to-many → brokers)
+├── id         uuid PK
+├── brokerId   uuid FK → brokers.id  ON DELETE CASCADE
+├── title      varchar
 ├── description text
-├── logoUrl     varchar
-├── website     varchar
-├── brokerType  enum: cfd | bond | stock | crypto
-├── createdAt   timestamp
-├── updatedAt   timestamp
-└── deletedAt   timestamp | null  (soft delete)
+└── sortOrder  smallint DEFAULT 0
+
+broker_metrics  (one-to-one → brokers, brokerId is PK)
+├── brokerId             uuid PK+FK → brokers.id
+├── aumGrowthYoY         varchar | null  (e.g. "+34.2%")
+├── liquidityAccess      varchar | null  (e.g. "$18.4B")
+├── liquidityAccessSub   varchar | null  (e.g. "Daily Average")
+├── clientRetention      varchar | null  (e.g. "94.7%")
+└── clientRetentionPeriod varchar | null
+
+broker_markets  (one-to-one → brokers, brokerId is PK)
+├── brokerId      uuid PK+FK → brokers.id
+├── forexPairs    int DEFAULT 0
+├── indices       int DEFAULT 0
+├── commodities   int DEFAULT 0
+├── equities      int DEFAULT 0
+├── sovereignBonds int DEFAULT 0
+└── cryptoEtps    int DEFAULT 0
 
 reviews
 ├── id        uuid PK
