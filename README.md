@@ -95,13 +95,15 @@ All routes are prefixed with `/api/v1` by default.
 | DELETE | `/users/me` | Soft-delete own account |
 
 ### Brokers
-| Method | Route | Auth |
-|---|---|---|
-| GET | `/brokers` | public — paginated, filterable by `brokerType` |
-| GET | `/brokers/:id` | public |
-| POST | `/brokers` | JWT |
-| PATCH | `/brokers/:id` | JWT |
-| DELETE | `/brokers/:id` | JWT (soft-delete) |
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| GET | `/brokers` | public | Paginated, filterable by `brokerType` (brokers table only) |
+| GET | `/brokers/slugs` | public | All broker slugs (for static generation) |
+| GET | `/brokers/types` | public | Distinct broker types that have brokers |
+| GET | `/brokers/:slug` | public | Detail with features, metrics, markets |
+| POST | `/brokers` | JWT | Create with optional nested features/metrics/markets |
+| PATCH | `/brokers/:id` | JWT | Update (replace features if provided; upsert metrics/markets) |
+| DELETE | `/brokers/:id` | JWT | Soft-delete |
 
 ### Reviews
 | Method | Route | Auth |
