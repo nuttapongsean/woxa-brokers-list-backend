@@ -19,30 +19,70 @@ REST API for managing financial brokers, built with NestJS + TypeScript + Postgr
 - Redis 7
 - Docker + Docker Compose (optional, for containerised setup)
 
-## Quick Start (local)
+## Running Locally
+
+### Prerequisites
+
+- [Node.js 22+](https://nodejs.org/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for Postgres + Redis)
+
+### Step-by-step
+
+**1. Install dependencies**
 
 ```bash
-# 1. Install dependencies
 npm install
+```
 
-# 2. Start infra (postgres + redis)
-docker compose up postgres redis -d
+**2. Configure environment**
 
-# 3. Create your env file
+```bash
 cp .env.example .env
+```
 
-# 4. Run migrations
+Open `.env` and replace the three secrets — the app will refuse to start if they are missing or shorter than 32 characters:
+
+```dotenv
+JWT_SECRET=<run: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
+JWT_REFRESH_SECRET=<different value, same command>
+SESSION_SECRET=<different value, same command>
+```
+
+> **Important:** Docker Compose reads `.env` to create the Postgres user and database. Set up `.env` _before_ starting Docker. If you change credentials after the volume exists, run `docker compose down -v` to reset.
+
+**3. Start Postgres and Redis**
+
+```bash
+docker compose up postgres redis -d
+```
+
+Wait ~10 seconds for the Postgres healthcheck to pass before continuing.
+
+**4. Run database migrations**
+
+```bash
 npm run migration:run
+```
 
-# 5. (Optional) Seed mock broker data
-npm run seed
+**5. (Optional) Seed mock broker data**
 
-# 6. Start in watch mode
+```bash
+npm run seed   # inserts 5 brokers — safe to run multiple times
+```
+
+**6. Start the app**
+
+```bash
 npm run start:dev
 ```
 
-API: `http://localhost:4000/api/v1`
-Swagger: `http://localhost:4000/docs`
+**7. Verify**
+
+| Resource | URL |
+|---|---|
+| Health check | http://localhost:4000/api/v1/health |
+| Swagger UI | http://localhost:4000/docs |
+| API base | http://localhost:4000/api/v1 |
 
 ## npm Scripts
 
@@ -203,20 +243,81 @@ npm run test:cov      # coverage report
 npm run test:e2e      # end-to-end tests
 ```
 
-## Docker (full stack)
+## Running with Docker Compose (full stack)
+
+All services (Postgres, Redis, migrations, app) run as containers. No local Node.js or database install needed.
+
+### Step-by-step
+
+**1. Configure `.env`**
 
 ```bash
-# Start everything (postgres + redis + migrate + app)
-docker compose up --build
+cp .env.example .env
+```
 
-# Infra only (for local dev against npm run start:dev)
+Fill in the three secrets, then switch the host variables for the container network:
+
+```dotenv
+DB_HOST=postgres      # container hostname — NOT localhost
+REDIS_HOST=redis      # container hostname — NOT localhost
+```
+
+**2. Build and start**
+
+```bash
+docker compose up --build
+```
+
+Docker will:
+1. Start Postgres and wait for its healthcheck
+2. Run `migration:run` inside a one-shot `migrate` container
+3. Start the NestJS `app` container only after migrations succeed
+
+**3. Verify**
+
+| Resource | URL |
+|---|---|
+| Health check | http://localhost:4000/api/v1/health |
+| Swagger UI | http://localhost:4000/docs |
+
+> Swagger is disabled when `NODE_ENV=production`. Keep `NODE_ENV=development` in `.env` if you want it available.
+
+**4. (Optional) Seed data**
+
+The app container has `ts-node` available. Run seed from your host machine pointing at the running Postgres:
+
+```bash
+# Keep DB_HOST=localhost in a separate terminal (or use a second .env)
+npm run seed
+```
+
+Or exec into the app container:
+
+```bash
+docker compose exec app node -e "require('./dist/scripts/seed')"
+```
+
+### Other Docker commands
+
+```bash
+# Infra only — use with npm run start:dev on the host
 docker compose up postgres redis -d
 
 # Include pgAdmin at http://localhost:5050
 docker compose --profile tools up --build
-```
 
-`docker-compose.yml` reads `.env`. For the full stack, set `DB_HOST=postgres` and `REDIS_HOST=redis` in `.env`.
+# Stop and remove containers (keeps data volumes)
+docker compose down
+
+# Stop and wipe all data (fresh start)
+docker compose down -v
+
+# View app logs
+docker compose logs -f app
+
+# Rebuild after code changes
+docker compose up --build app
+```
 
 ## Deployment (Railway)
 
