@@ -1,0 +1,486 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/brokers": {
+      "get": {
+        "operationId": "BrokersController_findAll",
+        "parameters": [
+          {
+            "name": "brokerType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cfd",
+                "bond",
+                "stock",
+                "crypto"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List all brokers (paginated, filterable by type)",
+        "tags": [
+          "brokers"
+        ]
+      },
+      "post": {
+        "operationId": "BrokersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBrokerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new broker",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/slugs": {
+      "get": {
+        "operationId": "BrokersController_findSlugs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List all broker slugs (for static generation)",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/types": {
+      "get": {
+        "operationId": "BrokersController_findTypes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List distinct broker types that have at least one broker",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/{slug}": {
+      "get": {
+        "operationId": "BrokersController_findOne",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get a single broker by slug (with features, metrics, markets)",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
+    "/brokers/{id}": {
+      "patch": {
+        "operationId": "BrokersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBrokerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a broker",
+        "tags": [
+          "brokers"
+        ]
+      },
+      "delete": {
+        "operationId": "BrokersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Soft-delete a broker",
+        "tags": [
+          "brokers"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Woxa Brokers List API",
+    "description": "REST API for managing financial brokers",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "CreateBrokerFeatureDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Zero Commission"
+          },
+          "description": {
+            "type": "string",
+            "example": "Trade with zero commission on all instruments."
+          },
+          "sortOrder": {
+            "type": "number",
+            "example": 0,
+            "default": 0
+          }
+        },
+        "required": [
+          "title",
+          "description"
+        ]
+      },
+      "CreateBrokerMetricsDto": {
+        "type": "object",
+        "properties": {
+          "aumGrowthYoY": {
+            "type": "string",
+            "example": "+34.2%"
+          },
+          "liquidityAccess": {
+            "type": "string",
+            "example": "$18.4B"
+          },
+          "liquidityAccessSub": {
+            "type": "string",
+            "example": "Daily Average"
+          },
+          "clientRetention": {
+            "type": "string",
+            "example": "94.7%"
+          },
+          "clientRetentionPeriod": {
+            "type": "string",
+            "example": "12-month rolling"
+          }
+        }
+      },
+      "CreateBrokerMarketsDto": {
+        "type": "object",
+        "properties": {
+          "forexPairs": {
+            "type": "number",
+            "example": 100
+          },
+          "indices": {
+            "type": "number",
+            "example": 20
+          },
+          "commodities": {
+            "type": "number",
+            "example": 15
+          },
+          "equities": {
+            "type": "number",
+            "example": 500
+          },
+          "sovereignBonds": {
+            "type": "number",
+            "example": 50
+          },
+          "cryptoEtps": {
+            "type": "number",
+            "example": 30
+          }
+        }
+      },
+      "CreateBrokerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Exness"
+          },
+          "slug": {
+            "type": "string",
+            "example": "exness",
+            "description": "Auto-generated from name if omitted"
+          },
+          "description": {
+            "type": "string",
+            "example": "A leading multi-asset broker."
+          },
+          "logoUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/logos/exness.png"
+          },
+          "website": {
+            "type": "string",
+            "example": "https://www.exness.com"
+          },
+          "brokerType": {
+            "type": "string",
+            "enum": [
+              "cfd",
+              "bond",
+              "stock",
+              "crypto"
+            ],
+            "example": "cfd"
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/images/exness-cover.png"
+          },
+          "badge": {
+            "type": "string",
+            "example": "Premium TIER"
+          },
+          "tag": {
+            "type": "string",
+            "example": "SEC Regulated"
+          },
+          "icon": {
+            "type": "string",
+            "example": "shield"
+          },
+          "grade": {
+            "type": "string",
+            "example": "SOVEREIGN GRADE A+"
+          },
+          "rating": {
+            "type": "number",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "prospectusUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/docs/prospectus.pdf"
+          },
+          "longDescription": {
+            "type": "string",
+            "example": "Exness is a global multi-asset broker..."
+          },
+          "contactAddress": {
+            "type": "string",
+            "example": "123 Finance Street, Bangkok, Thailand"
+          },
+          "contactEmail": {
+            "type": "string",
+            "example": "support@exness.com"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateBrokerFeatureDto"
+            }
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/CreateBrokerMetricsDto"
+          },
+          "markets": {
+            "$ref": "#/components/schemas/CreateBrokerMarketsDto"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "logoUrl",
+          "website",
+          "brokerType"
+        ]
+      },
+      "UpdateBrokerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Exness"
+          },
+          "slug": {
+            "type": "string",
+            "example": "exness",
+            "description": "Auto-generated from name if omitted"
+          },
+          "description": {
+            "type": "string",
+            "example": "A leading multi-asset broker."
+          },
+          "logoUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/logos/exness.png"
+          },
+          "website": {
+            "type": "string",
+            "example": "https://www.exness.com"
+          },
+          "brokerType": {
+            "type": "string",
+            "enum": [
+              "cfd",
+              "bond",
+              "stock",
+              "crypto"
+            ],
+            "example": "cfd"
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/images/exness-cover.png"
+          },
+          "badge": {
+            "type": "string",
+            "example": "Premium TIER"
+          },
+          "tag": {
+            "type": "string",
+            "example": "SEC Regulated"
+          },
+          "icon": {
+            "type": "string",
+            "example": "shield"
+          },
+          "grade": {
+            "type": "string",
+            "example": "SOVEREIGN GRADE A+"
+          },
+          "rating": {
+            "type": "number",
+            "example": 5,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "prospectusUrl": {
+            "type": "string",
+            "example": "https://cdn.example.com/docs/prospectus.pdf"
+          },
+          "longDescription": {
+            "type": "string",
+            "example": "Exness is a global multi-asset broker..."
+          },
+          "contactAddress": {
+            "type": "string",
+            "example": "123 Finance Street, Bangkok, Thailand"
+          },
+          "contactEmail": {
+            "type": "string",
+            "example": "support@exness.com"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateBrokerFeatureDto"
+            }
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/CreateBrokerMetricsDto"
+          },
+          "markets": {
+            "$ref": "#/components/schemas/CreateBrokerMarketsDto"
+          }
+        }
+      }
+    }
+  }
+}
