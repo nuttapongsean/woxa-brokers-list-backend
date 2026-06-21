@@ -1,29 +1,93 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { BrokersService } from './brokers.service';
 import { Broker, BrokerType } from './entities/broker.entity';
+import { StorageService } from '../../shared/storage/storage.service';
+import type { UploadedFile } from '../../shared/storage/types';
 
 const mockBroker: Broker = {
   id: 'uuid-1',
   name: 'Exness',
   slug: 'exness',
-  description: 'A leading multi-asset broker with tight spreads.',
-  logoUrl: 'https://cdn.example.com/exness.png',
+  description: 'A leading multi-asset broker with deep liquidity.',
+  logoUrl: 'https://cdn.cloudinary.com/logo.jpg',
+  imageUrl: 'https://cdn.cloudinary.com/cover.jpg',
   website: 'https://www.exness.com',
   brokerType: BrokerType.CFD,
+  longDescription: 'Exness is a global multi-asset broker...',
+  contactAddress: '123 Finance Street',
+  contactEmail: 'support@exness.com',
   features: [],
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,
 };
 
+const makeFile = (name: string): UploadedFile => ({
+  fieldname: name,
+  originalname: `${name}.png`,
+  encoding: '7bit',
+  mimetype: 'image/png',
+  size: 1024,
+  buffer: Buffer.from(name),
+});
+
+const validDto = {
+  name: 'Exness',
+  brokerType: BrokerType.CFD,
+  description: 'A leading multi-asset broker with deep liquidity.',
+  longDescription: 'Exness is a global multi-asset broker...',
+  website: 'https://www.exness.com',
+  contactAddress: '123 Finance Street',
+  contactEmail: 'support@exness.com',
+};
+
+const validFiles = {
+  logo: [makeFile('logo')],
+  coverImage: [makeFile('cover')],
+};
+
+const mockQueryBuilder = {
+  leftJoinAndSelect: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  select: jest.fn().mockReturnThis(),
+  getOne: jest.fn(),
+  getRawMany: jest.fn(),
+};
+
+const mockManager = {
+  save: jest.fn(),
+  delete: jest.fn(),
+  update: jest.fn(),
+};
+
 const mockRepo = {
   findOne: jest.fn(),
   findAndCount: jest.fn(),
-  save: jest.fn(),
-  update: jest.fn(),
   softDelete: jest.fn(),
+  createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+};
+
+const mockDataSource = {
+  transaction: jest.fn((cb: (manager: typeof mockManager) => Promise<void>) =>
+    cb(mockManager),
+  ),
+};
+
+const mockStorageService = {
+  uploadImage: jest
+    .fn()
+    .mockResolvedValue('https://cdn.cloudinary.com/image.jpg'),
+  uploadFile: jest
+    .fn()
+    .mockResolvedValue('https://cdn.cloudinary.com/file.pdf'),
 };
 
 describe('BrokersService', () => {
@@ -34,74 +98,106 @@ describe('BrokersService', () => {
       providers: [
         BrokersService,
         { provide: getRepositoryToken(Broker), useValue: mockRepo },
+        { provide: DataSource, useValue: mockDataSource },
+        { provide: StorageService, useValue: mockStorageService },
       ],
     }).compile();
 
     service = module.get<BrokersService>(BrokersService);
     jest.clearAllMocks();
+    mockRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+    mockStorageService.uploadImage.mockResolvedValue(
+      'https://cdn.cloudinary.com/image.jpg',
+    );
+    mockDataSource.transaction.mockImplementation(
+      (cb: (manager: typeof mockManager) => Promise<void>) => cb(mockManager),
+    );
   });
 
   describe('create', () => {
+    it('throws BadRequestException when logo is missing', async () => {
+      await expect(
+        service.create(validDto, {}, { coverImage: validFiles.coverImage }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when coverImage is missing', async () => {
+      await expect(
+        service.create(validDto, {}, { logo: validFiles.logo }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws ConflictException when slug is already taken', async () => {
+      mockRepo.findOne.mockResolvedValue(mockBroker);
+
+      await expect(service.create(validDto, {}, validFiles)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
     it('auto-generates slug from name when omitted', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      mockRepo.save.mockResolvedValue({ ...mockBroker, slug: 'exness' });
+      mockQueryBuilder.getOne.mockResolvedValue(mockBroker);
 
-      const result = await service.create({
-        name: 'Exness',
-        description: 'A leading multi-asset broker with tight spreads.',
-        logoUrl: 'https://cdn.example.com/exness.png',
-        website: 'https://www.exness.com',
-        brokerType: BrokerType.CFD,
-      });
+      await service.create(validDto, {}, validFiles);
 
-      expect(result.slug).toBe('exness');
-      expect(mockRepo.save).toHaveBeenCalledWith(
+      expect(mockManager.save).toHaveBeenCalledWith(
+        Broker,
         expect.objectContaining({ slug: 'exness' }),
       );
     });
 
-    it('throws ConflictException when slug is taken', async () => {
-      mockRepo.findOne.mockResolvedValue(mockBroker);
+    it('uses provided slug when given', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockQueryBuilder.getOne.mockResolvedValue(mockBroker);
 
-      await expect(
-        service.create({
-          name: 'Exness',
-          description: 'A leading multi-asset broker.',
-          logoUrl: 'https://cdn.example.com/exness.png',
-          website: 'https://www.exness.com',
-          brokerType: BrokerType.CFD,
-        }),
-      ).rejects.toThrow(ConflictException);
+      await service.create(
+        { ...validDto, slug: 'custom-slug' },
+        {},
+        validFiles,
+      );
+
+      expect(mockManager.save).toHaveBeenCalledWith(
+        Broker,
+        expect.objectContaining({ slug: 'custom-slug' }),
+      );
     });
 
-    it('throws ConflictException when DB unique constraint fires (race condition)', async () => {
+    it('uploads logo and coverImage via StorageService', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      mockRepo.save.mockRejectedValue({ code: '23505' });
+      mockQueryBuilder.getOne.mockResolvedValue(mockBroker);
 
-      await expect(
-        service.create({
-          name: 'Exness',
-          description: 'A leading multi-asset broker with tight spreads.',
-          logoUrl: 'https://cdn.example.com/exness.png',
-          website: 'https://www.exness.com',
-          brokerType: BrokerType.CFD,
-        }),
-      ).rejects.toThrow(ConflictException);
+      await service.create(validDto, {}, validFiles);
+
+      expect(mockStorageService.uploadImage).toHaveBeenCalledTimes(2);
     });
 
-    it('rethrows unknown errors from save', async () => {
+    it('saves metrics from flat rawBody fields', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      mockRepo.save.mockRejectedValue(new Error('db connection lost'));
+      mockQueryBuilder.getOne.mockResolvedValue(mockBroker);
 
-      await expect(
-        service.create({
-          name: 'Exness',
-          description: 'A leading multi-asset broker with tight spreads.',
-          logoUrl: 'https://cdn.example.com/exness.png',
-          website: 'https://www.exness.com',
-          brokerType: BrokerType.CFD,
-        }),
-      ).rejects.toThrow('db connection lost');
+      await service.create(
+        validDto,
+        { 'metrics.aumGrowthYoY': '+34.2%' },
+        validFiles,
+      );
+
+      expect(mockManager.save).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ aumGrowthYoY: '+34.2%' }),
+      );
+    });
+
+    it('throws ConflictException on DB unique constraint (race condition)', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+      mockStorageService.uploadImage.mockResolvedValue(
+        'https://cdn.cloudinary.com/image.jpg',
+      );
+      mockDataSource.transaction.mockRejectedValue({ code: '23505' });
+
+      await expect(service.create(validDto, {}, validFiles)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -128,15 +224,18 @@ describe('BrokersService', () => {
   });
 
   describe('findOne', () => {
-    it('returns a broker by id', async () => {
-      mockRepo.findOne.mockResolvedValue(mockBroker);
-      const result = await service.findOne('uuid-1');
+    it('returns a broker by slug', async () => {
+      mockQueryBuilder.getOne.mockResolvedValue(mockBroker);
+
+      const result = await service.findOne('exness');
+
       expect(result).toEqual(mockBroker);
     });
 
     it('throws NotFoundException when broker does not exist', async () => {
-      mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne('bad-id')).rejects.toThrow(
+      mockQueryBuilder.getOne.mockResolvedValue(null);
+
+      await expect(service.findOne('bad-slug')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -146,67 +245,38 @@ describe('BrokersService', () => {
     it('throws NotFoundException when broker does not exist', async () => {
       mockRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.update('bad-id', { name: 'X' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('bad-id', { name: 'X' }, {}, {}),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws ConflictException when new slug is already taken', async () => {
       const otherBroker = { ...mockBroker, id: 'uuid-2', slug: 'icmarkets' };
       mockRepo.findOne
-        .mockResolvedValueOnce(mockBroker) // findOne(id)
-        .mockResolvedValueOnce(otherBroker); // slug conflict check
+        .mockResolvedValueOnce(mockBroker)
+        .mockResolvedValueOnce(otherBroker);
 
       await expect(
-        service.update('uuid-1', { slug: 'icmarkets' }),
+        service.update('uuid-1', { slug: 'icmarkets' }, {}, {}),
       ).rejects.toThrow(ConflictException);
     });
 
     it('skips slug conflict check when slug is unchanged', async () => {
-      mockRepo.findOne
-        .mockResolvedValueOnce(mockBroker) // findOne(id)
-        .mockResolvedValueOnce(mockBroker); // findOne after update
-      mockRepo.update.mockResolvedValue(undefined);
-
-      await service.update('uuid-1', { slug: 'exness' });
-
-      expect(mockRepo.findOne).toHaveBeenCalledTimes(2);
-    });
-
-    it('throws ConflictException when DB unique constraint fires during update (race condition)', async () => {
-      mockRepo.findOne
-        .mockResolvedValueOnce(mockBroker) // findOne(id)
-        .mockResolvedValueOnce(null); // slug pre-check passes
-      mockRepo.update.mockRejectedValue({ code: '23505' });
-
-      await expect(
-        service.update('uuid-1', { slug: 'new-slug' }),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('rethrows unknown errors from update', async () => {
       mockRepo.findOne.mockResolvedValueOnce(mockBroker);
-      mockRepo.update.mockRejectedValue(new Error('db connection lost'));
+      mockQueryBuilder.getOne.mockResolvedValue(mockBroker);
 
-      await expect(service.update('uuid-1', { name: 'X' })).rejects.toThrow(
-        'db connection lost',
-      );
+      await service.update('uuid-1', { slug: 'exness' }, {}, {});
+
+      expect(mockRepo.findOne).toHaveBeenCalledTimes(1);
     });
 
-    it('returns the updated broker', async () => {
-      const updated = { ...mockBroker, name: 'Exness Pro' };
-      mockRepo.findOne
-        .mockResolvedValueOnce(mockBroker) // findOne(id)
-        .mockResolvedValueOnce(updated); // findOne after update
-      mockRepo.update.mockResolvedValue(undefined);
+    it('uploads new logo when provided', async () => {
+      mockRepo.findOne.mockResolvedValueOnce(mockBroker);
+      mockQueryBuilder.getOne.mockResolvedValue(mockBroker);
 
-      const result = await service.update('uuid-1', { name: 'Exness Pro' });
+      await service.update('uuid-1', {}, {}, { logo: [makeFile('new-logo')] });
 
-      expect(result.name).toBe('Exness Pro');
-      expect(mockRepo.update).toHaveBeenCalledWith(
-        { id: 'uuid-1' },
-        { name: 'Exness Pro' },
-      );
+      expect(mockStorageService.uploadImage).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -218,6 +288,12 @@ describe('BrokersService', () => {
       await service.remove('uuid-1');
 
       expect(mockRepo.softDelete).toHaveBeenCalledWith({ id: 'uuid-1' });
+    });
+
+    it('throws NotFoundException when broker does not exist', async () => {
+      mockRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.remove('bad-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

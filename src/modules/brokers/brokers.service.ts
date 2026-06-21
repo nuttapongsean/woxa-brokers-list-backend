@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { slugify } from '../../utils/slugify';
+import { StorageService } from '../../shared/storage/storage.service';
 import { Broker, BrokerType } from './entities/broker.entity';
 import { BrokerFeature } from './entities/broker-feature.entity';
 import { BrokerMetrics } from './entities/broker-metrics.entity';
@@ -14,6 +16,8 @@ import { BrokerMarkets } from './entities/broker-markets.entity';
 import { CreateBrokerDto } from './dto/create-broker.dto';
 import { UpdateBrokerDto } from './dto/update-broker.dto';
 import { BrokerQueryDto } from './dto/broker-query.dto';
+import type { CreateBrokerFeatureDto } from './dto/create-broker-feature.dto';
+import type { UploadedFile } from '../../shared/storage/types';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -23,27 +27,93 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+interface BrokerFiles {
+  logo?: UploadedFile[];
+  coverImage?: UploadedFile[];
+  prospectus?: UploadedFile[];
+}
+
+function extractMetrics(body: Record<string, string>) {
+  const m = {
+    aumGrowthYoY: body['metrics.aumGrowthYoY'] || undefined,
+    liquidityAccess: body['metrics.liquidityAccess'] || undefined,
+    clientRetention: body['metrics.clientRetention'] || undefined,
+  };
+  return Object.values(m).some(Boolean) ? m : undefined;
+}
+
+function extractMarkets(body: Record<string, string>) {
+  const parse = (v: string | undefined) =>
+    v !== undefined ? parseInt(v, 10) : undefined;
+  const m = {
+    forexPairs: parse(body['markets.forexPairs']),
+    indices: parse(body['markets.indices']),
+    commodities: parse(body['markets.commodities']),
+    equities: parse(body['markets.equities']),
+    sovereignBonds: parse(body['markets.sovereignBonds']),
+    cryptoEtps: parse(body['markets.cryptoEtps']),
+  };
+  return Object.values(m).some((v) => v !== undefined) ? m : undefined;
+}
+
+function parseFeatures(json?: string): CreateBrokerFeatureDto[] | undefined {
+  if (!json) return undefined;
+  try {
+    return JSON.parse(json) as CreateBrokerFeatureDto[];
+  } catch {
+    return [];
+  }
+}
+
 @Injectable()
 export class BrokersService {
   constructor(
     @InjectRepository(Broker) private readonly brokerRepo: Repository<Broker>,
-    @InjectRepository(BrokerFeature) private readonly featureRepo: Repository<BrokerFeature>,
-    @InjectRepository(BrokerMetrics) private readonly metricsRepo: Repository<BrokerMetrics>,
-    @InjectRepository(BrokerMarkets) private readonly marketsRepo: Repository<BrokerMarkets>,
     private readonly dataSource: DataSource,
+    private readonly storageService: StorageService,
   ) {}
 
-  async create(dto: CreateBrokerDto): Promise<Broker> {
+  async create(
+    dto: CreateBrokerDto,
+    rawBody: Record<string, string>,
+    files: BrokerFiles,
+  ): Promise<Broker> {
+    const logoFile = files?.logo?.[0];
+    const coverImageFile = files?.coverImage?.[0];
+    const prospectusFile = files?.prospectus?.[0];
+
+    if (!logoFile) throw new BadRequestException('logo file is required');
+    if (!coverImageFile)
+      throw new BadRequestException('coverImage file is required');
+
     const slug = dto.slug ?? slugify(dto.name);
     const existing = await this.brokerRepo.findOne({ where: { slug } });
     if (existing) throw new ConflictException('common.SLUG_ALREADY_TAKEN');
 
+    const [logoUrl, imageUrl, prospectusUrl] = await Promise.all([
+      this.storageService.uploadImage(logoFile, 'brokers/logos'),
+      this.storageService.uploadImage(coverImageFile, 'brokers/covers'),
+      prospectusFile
+        ? this.storageService.uploadFile(prospectusFile, 'brokers/prospectus')
+        : Promise.resolve(undefined),
+    ]);
+
     const id = randomUUID();
-    const { features, metrics, markets, slug: _slug, ...rest } = dto;
+    const { features: featuresJson, ...rest } = dto;
+    const features = parseFeatures(featuresJson);
+    const metrics = extractMetrics(rawBody);
+    const markets = extractMarkets(rawBody);
 
     try {
       await this.dataSource.transaction(async (manager) => {
-        await manager.save(Broker, { ...rest, id, slug });
+        await manager.save(Broker, {
+          ...rest,
+          id,
+          slug,
+          logoUrl,
+          imageUrl,
+          ...(prospectusUrl ? { prospectusUrl } : {}),
+        });
 
         if (features?.length) {
           await manager.save(
@@ -75,6 +145,25 @@ export class BrokersService {
     return this.findOne(slug);
   }
 
+  private async signBroker(broker: Broker): Promise<Broker> {
+    const sign = (
+      key: string | null | undefined,
+    ): Promise<string | undefined> =>
+      key
+        ? this.storageService.getPresignedUrl(key)
+        : Promise.resolve(undefined);
+
+    const signed = { ...broker };
+    [signed.logoUrl, signed.imageUrl, signed.prospectusUrl] = await Promise.all(
+      [
+        sign(broker.logoUrl) as Promise<string>,
+        sign(broker.imageUrl),
+        sign(broker.prospectusUrl),
+      ],
+    );
+    return signed;
+  }
+
   async findAll(query: BrokerQueryDto): Promise<PaginatedResult<Broker>> {
     const { page = 1, limit = 10, brokerType } = query;
 
@@ -85,7 +174,14 @@ export class BrokersService {
       take: limit,
     });
 
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    const signed = await Promise.all(data.map((b) => this.signBroker(b)));
+    return {
+      data: signed,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findSlugs(): Promise<string[]> {
@@ -125,16 +221,63 @@ export class BrokersService {
     return broker;
   }
 
-  async update(id: string, dto: UpdateBrokerDto): Promise<Broker> {
+  async update(
+    id: string,
+    dto: UpdateBrokerDto,
+    rawBody: Record<string, string>,
+    files: BrokerFiles,
+  ): Promise<Broker> {
     const broker = await this.findById(id);
-    const { features, metrics, markets, ...brokerFields } = dto;
+    const { features: featuresJson, ...dtoBrokerFields } = dto;
 
-    if (brokerFields.slug && brokerFields.slug !== broker.slug) {
+    if (dtoBrokerFields.slug && dtoBrokerFields.slug !== broker.slug) {
       const conflict = await this.brokerRepo.findOne({
-        where: { slug: brokerFields.slug },
+        where: { slug: dtoBrokerFields.slug },
       });
       if (conflict) throw new ConflictException('common.SLUG_ALREADY_TAKEN');
     }
+
+    const logoFile = files?.logo?.[0];
+    const coverImageFile = files?.coverImage?.[0];
+    const prospectusFile = files?.prospectus?.[0];
+
+    const [logoUrl, imageUrl, prospectusUrl] = await Promise.all([
+      logoFile
+        ? this.storageService.uploadImage(logoFile, 'brokers/logos')
+        : Promise.resolve(undefined),
+      coverImageFile
+        ? this.storageService.uploadImage(coverImageFile, 'brokers/covers')
+        : Promise.resolve(undefined),
+      prospectusFile
+        ? this.storageService.uploadFile(prospectusFile, 'brokers/prospectus')
+        : Promise.resolve(undefined),
+    ]);
+
+    const brokerFields = {
+      ...dtoBrokerFields,
+      ...(logoUrl ? { logoUrl } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
+      ...(prospectusUrl ? { prospectusUrl } : {}),
+    };
+
+    const hasMetrics = [
+      'metrics.aumGrowthYoY',
+      'metrics.liquidityAccess',
+      'metrics.clientRetention',
+    ].some((k) => k in rawBody);
+    const hasMarkets = [
+      'markets.forexPairs',
+      'markets.indices',
+      'markets.commodities',
+      'markets.equities',
+      'markets.sovereignBonds',
+      'markets.cryptoEtps',
+    ].some((k) => k in rawBody);
+
+    const features =
+      featuresJson !== undefined ? parseFeatures(featuresJson) : undefined;
+    const metrics = hasMetrics ? extractMetrics(rawBody) : undefined;
+    const markets = hasMarkets ? extractMarkets(rawBody) : undefined;
 
     try {
       await this.dataSource.transaction(async (manager) => {
@@ -172,7 +315,7 @@ export class BrokersService {
       throw e;
     }
 
-    const updatedSlug = brokerFields.slug ?? broker.slug;
+    const updatedSlug = dtoBrokerFields.slug ?? broker.slug;
     return this.findOne(updatedSlug);
   }
 

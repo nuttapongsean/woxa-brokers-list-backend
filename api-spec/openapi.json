@@ -93,7 +93,7 @@
             "bearer": []
           }
         ],
-        "summary": "Logout — invalidates the refresh token",
+        "summary": "Logout — invalidates the current session",
         "tags": [
           "auth"
         ]
@@ -317,7 +317,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/CreateBrokerDto"
               }
@@ -410,7 +410,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateBrokerDto"
               }
@@ -958,82 +958,6 @@
           "fullName"
         ]
       },
-      "CreateBrokerFeatureDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "example": "Zero Commission"
-          },
-          "description": {
-            "type": "string",
-            "example": "Trade with zero commission on all instruments."
-          },
-          "sortOrder": {
-            "type": "number",
-            "example": 0,
-            "default": 0
-          }
-        },
-        "required": [
-          "title",
-          "description"
-        ]
-      },
-      "CreateBrokerMetricsDto": {
-        "type": "object",
-        "properties": {
-          "aumGrowthYoY": {
-            "type": "string",
-            "example": "+34.2%"
-          },
-          "liquidityAccess": {
-            "type": "string",
-            "example": "$18.4B"
-          },
-          "liquidityAccessSub": {
-            "type": "string",
-            "example": "Daily Average"
-          },
-          "clientRetention": {
-            "type": "string",
-            "example": "94.7%"
-          },
-          "clientRetentionPeriod": {
-            "type": "string",
-            "example": "12-month rolling"
-          }
-        }
-      },
-      "CreateBrokerMarketsDto": {
-        "type": "object",
-        "properties": {
-          "forexPairs": {
-            "type": "number",
-            "example": 100
-          },
-          "indices": {
-            "type": "number",
-            "example": 20
-          },
-          "commodities": {
-            "type": "number",
-            "example": 15
-          },
-          "equities": {
-            "type": "number",
-            "example": 500
-          },
-          "sovereignBonds": {
-            "type": "number",
-            "example": 50
-          },
-          "cryptoEtps": {
-            "type": "number",
-            "example": 30
-          }
-        }
-      },
       "CreateBrokerDto": {
         "type": "object",
         "properties": {
@@ -1043,20 +967,8 @@
           },
           "slug": {
             "type": "string",
-            "example": "exness",
+            "example": "exness-a1b2c",
             "description": "Auto-generated from name if omitted"
-          },
-          "description": {
-            "type": "string",
-            "example": "A leading multi-asset broker."
-          },
-          "logoUrl": {
-            "type": "string",
-            "example": "https://cdn.example.com/logos/exness.png"
-          },
-          "website": {
-            "type": "string",
-            "example": "https://www.exness.com"
           },
           "brokerType": {
             "type": "string",
@@ -1068,39 +980,17 @@
             ],
             "example": "cfd"
           },
-          "imageUrl": {
+          "description": {
             "type": "string",
-            "example": "https://cdn.example.com/images/exness-cover.png"
-          },
-          "badge": {
-            "type": "string",
-            "example": "Premium TIER"
-          },
-          "tag": {
-            "type": "string",
-            "example": "SEC Regulated"
-          },
-          "icon": {
-            "type": "string",
-            "example": "shield"
-          },
-          "grade": {
-            "type": "string",
-            "example": "SOVEREIGN GRADE A+"
-          },
-          "rating": {
-            "type": "number",
-            "example": 5,
-            "minimum": 1,
-            "maximum": 5
-          },
-          "prospectusUrl": {
-            "type": "string",
-            "example": "https://cdn.example.com/docs/prospectus.pdf"
+            "example": "A leading multi-asset broker with deep liquidity."
           },
           "longDescription": {
             "type": "string",
             "example": "Exness is a global multi-asset broker..."
+          },
+          "website": {
+            "type": "string",
+            "example": "https://www.exness.com"
           },
           "contactAddress": {
             "type": "string",
@@ -1111,24 +1001,19 @@
             "example": "support@exness.com"
           },
           "features": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateBrokerFeatureDto"
-            }
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/CreateBrokerMetricsDto"
-          },
-          "markets": {
-            "$ref": "#/components/schemas/CreateBrokerMarketsDto"
+            "type": "string",
+            "description": "JSON-encoded array: [{\"title\":\"...\",\"description\":\"...\",\"sortOrder\":0}]",
+            "example": "[{\"title\":\"Zero Commission\",\"description\":\"Trade with zero commission.\"}]"
           }
         },
         "required": [
           "name",
+          "brokerType",
           "description",
-          "logoUrl",
+          "longDescription",
           "website",
-          "brokerType"
+          "contactAddress",
+          "contactEmail"
         ]
       },
       "UpdateBrokerDto": {
@@ -1140,20 +1025,8 @@
           },
           "slug": {
             "type": "string",
-            "example": "exness",
+            "example": "exness-a1b2c",
             "description": "Auto-generated from name if omitted"
-          },
-          "description": {
-            "type": "string",
-            "example": "A leading multi-asset broker."
-          },
-          "logoUrl": {
-            "type": "string",
-            "example": "https://cdn.example.com/logos/exness.png"
-          },
-          "website": {
-            "type": "string",
-            "example": "https://www.exness.com"
           },
           "brokerType": {
             "type": "string",
@@ -1165,39 +1038,17 @@
             ],
             "example": "cfd"
           },
-          "imageUrl": {
+          "description": {
             "type": "string",
-            "example": "https://cdn.example.com/images/exness-cover.png"
-          },
-          "badge": {
-            "type": "string",
-            "example": "Premium TIER"
-          },
-          "tag": {
-            "type": "string",
-            "example": "SEC Regulated"
-          },
-          "icon": {
-            "type": "string",
-            "example": "shield"
-          },
-          "grade": {
-            "type": "string",
-            "example": "SOVEREIGN GRADE A+"
-          },
-          "rating": {
-            "type": "number",
-            "example": 5,
-            "minimum": 1,
-            "maximum": 5
-          },
-          "prospectusUrl": {
-            "type": "string",
-            "example": "https://cdn.example.com/docs/prospectus.pdf"
+            "example": "A leading multi-asset broker with deep liquidity."
           },
           "longDescription": {
             "type": "string",
             "example": "Exness is a global multi-asset broker..."
+          },
+          "website": {
+            "type": "string",
+            "example": "https://www.exness.com"
           },
           "contactAddress": {
             "type": "string",
@@ -1208,16 +1059,9 @@
             "example": "support@exness.com"
           },
           "features": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateBrokerFeatureDto"
-            }
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/CreateBrokerMetricsDto"
-          },
-          "markets": {
-            "$ref": "#/components/schemas/CreateBrokerMarketsDto"
+            "type": "string",
+            "description": "JSON-encoded array: [{\"title\":\"...\",\"description\":\"...\",\"sortOrder\":0}]",
+            "example": "[{\"title\":\"Zero Commission\",\"description\":\"Trade with zero commission.\"}]"
           }
         }
       },

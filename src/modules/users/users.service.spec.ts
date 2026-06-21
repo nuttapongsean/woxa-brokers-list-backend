@@ -119,7 +119,9 @@ describe('UsersService', () => {
 
     it('throws NotFoundException when user not found', async () => {
       mockRepo.findOne.mockResolvedValue(null);
-      await expect(service.getProfile('bad-id')).rejects.toThrow(NotFoundException);
+      await expect(service.getProfile('bad-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -129,9 +131,14 @@ describe('UsersService', () => {
       mockRepo.update.mockResolvedValue(undefined);
       mockRepo.findOne.mockResolvedValue(updated);
 
-      const result = await service.updateProfile('uuid-1', { fullName: 'Jane Doe' });
+      const result = await service.updateProfile('uuid-1', {
+        fullName: 'Jane Doe',
+      });
 
-      expect(mockRepo.update).toHaveBeenCalledWith({ id: 'uuid-1' }, { fullName: 'Jane Doe' });
+      expect(mockRepo.update).toHaveBeenCalledWith(
+        { id: 'uuid-1' },
+        { fullName: 'Jane Doe' },
+      );
       expect(result.fullName).toBe('Jane Doe');
     });
   });

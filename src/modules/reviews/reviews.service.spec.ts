@@ -70,7 +70,11 @@ describe('ReviewsService', () => {
 
       expect(result).toEqual(mockReview);
       expect(mockRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'user-1', brokerId: 'broker-1', rating: 4 }),
+        expect.objectContaining({
+          userId: 'user-1',
+          brokerId: 'broker-1',
+          rating: 4,
+        }),
       );
     });
 
@@ -137,16 +141,17 @@ describe('ReviewsService', () => {
       const result = await service.findOne('review-1');
 
       expect(result).toEqual(mockReview);
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'review.id = :id',
-        { id: 'review-1' },
-      );
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('review.id = :id', {
+        id: 'review-1',
+      });
     });
 
     it('throws NotFoundException when review does not exist', async () => {
       mockQueryBuilder.getOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -159,7 +164,10 @@ describe('ReviewsService', () => {
 
       const result = await service.update('review-1', 'user-1', { rating: 5 });
 
-      expect(mockRepo.update).toHaveBeenCalledWith({ id: 'review-1' }, { rating: 5 });
+      expect(mockRepo.update).toHaveBeenCalledWith(
+        { id: 'review-1' },
+        { rating: 5 },
+      );
       expect(result.rating).toBe(5);
     });
 
