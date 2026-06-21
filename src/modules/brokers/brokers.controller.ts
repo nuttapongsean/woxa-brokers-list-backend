@@ -10,18 +10,39 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
+import type { UploadedFile } from '../../shared/storage/types';
+import { StripDotKeysInterceptor } from '../../common/interceptors/strip-dot-keys.interceptor';
 import { Public } from '../../common/decorators/public.decorator';
 import { BrokersService } from './brokers.service';
 import { CreateBrokerDto } from './dto/create-broker.dto';
 import { UpdateBrokerDto } from './dto/update-broker.dto';
 import { BrokerQueryDto } from './dto/broker-query.dto';
+
+interface BrokerFiles {
+  logo?: UploadedFile[];
+  coverImage?: UploadedFile[];
+  prospectus?: UploadedFile[];
+}
+
+const brokerFileFields = FileFieldsInterceptor([
+  { name: 'logo', maxCount: 1 },
+  { name: 'coverImage', maxCount: 1 },
+  { name: 'prospectus', maxCount: 1 },
+]);
 
 @ApiTags('brokers')
 @Controller('brokers')
@@ -52,6 +73,18 @@ export class BrokersController {
   }
 
   @Public()
+  @Get('suggest-slug')
+  @ApiOperation({ summary: 'Generate a unique slug from a broker name' })
+  @ApiQuery({
+    name: 'name',
+    required: true,
+    description: 'Broker name to slugify',
+  })
+  suggestSlug(@Query('name') name: string) {
+    return this.brokersService.suggestSlug(name);
+  }
+
+  @Public()
   @Get(':slug')
   @ApiOperation({
     summary: 'Get a single broker by slug (with features, metrics, markets)',
@@ -62,17 +95,39 @@ export class BrokersController {
 
   @Post()
   @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Create a new broker' })
   @ApiResponse({ status: 201 })
-  create(@Body() dto: CreateBrokerDto) {
-    return this.brokersService.create(dto);
+  @UseInterceptors(brokerFileFields, StripDotKeysInterceptor)
+  create(
+    @UploadedFiles() files: BrokerFiles,
+    @Body() dto: CreateBrokerDto,
+    @Req() req: Request,
+  ) {
+    return this.brokersService.create(
+      dto,
+      (req as Request & { dotFields: Record<string, string> }).dotFields ?? {},
+      files,
+    );
   }
 
   @Patch(':id')
   @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Update a broker' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBrokerDto) {
-    return this.brokersService.update(id, dto);
+  @UseInterceptors(brokerFileFields, StripDotKeysInterceptor)
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFiles() files: BrokerFiles,
+    @Body() dto: UpdateBrokerDto,
+    @Req() req: Request,
+  ) {
+    return this.brokersService.update(
+      id,
+      dto,
+      (req as Request & { dotFields: Record<string, string> }).dotFields ?? {},
+      files,
+    );
   }
 
   @Delete(':id')

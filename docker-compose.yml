@@ -57,6 +57,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    networks:
+      - woxa_network
 
   # pgAdmin — only starts when using: docker compose --profile tools up
   pgadmin:
@@ -77,3 +79,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  woxa_network:
+    external: true

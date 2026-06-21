@@ -6,9 +6,18 @@ import { BrokerMarkets } from './entities/broker-markets.entity';
 import { BrokerMetrics } from './entities/broker-metrics.entity';
 import { BrokersService } from './brokers.service';
 import { BrokersController } from './brokers.controller';
+import { StorageModule } from '../../shared/storage/storage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Broker, BrokerFeature, BrokerMetrics, BrokerMarkets])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Broker,
+      BrokerFeature,
+      BrokerMetrics,
+      BrokerMarkets,
+    ]),
+    StorageModule,
+  ],
   controllers: [BrokersController],
   providers: [BrokersService],
 })

@@ -12,18 +12,8 @@ export class CreateBrokerMetricsDto {
   @IsString()
   liquidityAccess?: string;
 
-  @ApiPropertyOptional({ example: 'Daily Average' })
-  @IsOptional()
-  @IsString()
-  liquidityAccessSub?: string;
-
   @ApiPropertyOptional({ example: '94.7%' })
   @IsOptional()
   @IsString()
   clientRetention?: string;
-
-  @ApiPropertyOptional({ example: '12-month rolling' })
-  @IsOptional()
-  @IsString()
-  clientRetentionPeriod?: string;
 }

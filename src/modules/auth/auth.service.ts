@@ -113,9 +113,12 @@ export class AuthService {
     }
 
     const session = await this.sessionsService.findById(payload.sid);
-    if (!session) throw new UnauthorizedException('common.INVALID_REFRESH_TOKEN');
+    if (!session)
+      throw new UnauthorizedException('common.INVALID_REFRESH_TOKEN');
 
-    const incoming = createHash('sha256').update(dto.refreshToken).digest('hex');
+    const incoming = createHash('sha256')
+      .update(dto.refreshToken)
+      .digest('hex');
 
     if (incoming !== session.tokenHash) {
       // Reuse detected — token was already rotated, possible theft

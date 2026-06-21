@@ -9,6 +9,7 @@
   "INVALID_RESET_TOKEN": "Token หมดอายุหรือไม่ถูกต้อง",
   "PASSWORDS_DO_NOT_MATCH": "รหัสผ่านไม่ตรงกัน",
   "SLUG_ALREADY_TAKEN": "Slug นี้ถูกใช้งานแล้ว",
+  "SLUG_GENERATION_FAILED": "ไม่สามารถสร้าง slug ที่ไม่ซ้ำกันได้ กรุณาลองชื่ออื่น",
   "REVIEW_FORBIDDEN_EDIT": "คุณสามารถแก้ไขเฉพาะรีวิวของตัวเองเท่านั้น",
   "REVIEW_FORBIDDEN_DELETE": "คุณสามารถลบเฉพาะรีวิวของตัวเองเท่านั้น"
 }
