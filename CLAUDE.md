@@ -30,6 +30,9 @@ npm run test:e2e         # e2e tests (test/jest-e2e.json)
 # Run a single test file
 npx jest src/modules/brokers/brokers.service.spec.ts
 npx jest --testNamePattern="BrokersService"
+
+# API Spec (OpenAPI / Swagger)
+npm run spec:generate    # regenerate api-spec/*.json from live Swagger decorators
 ```
 
 ## Project Structure
@@ -195,6 +198,7 @@ All routes prefixed with `API_PREFIX` (default `api/v1`).
 | GET | `/brokers` | public | List (paginated, filterable by type) — brokers table only |
 | GET | `/brokers/slugs` | public | All broker slugs — for static generation |
 | GET | `/brokers/types` | public | Distinct broker types that have at least one broker |
+| GET | `/brokers/suggest-slug` | public | Generate a unique slug from `?name=` (base slug + random 5-digit suffix) |
 | GET | `/brokers/:slug` | public | Detail with LEFT JOIN features, metrics, markets |
 | POST | `/brokers` | JWT | Create (optional nested features/metrics/markets) |
 | PATCH | `/brokers/:id` | JWT | Update (replaces features if provided; upserts metrics/markets) |
@@ -394,7 +398,7 @@ throw new ConflictException('common.SLUG_ALREADY_TAKEN');
 
 **Adding a new key:** add to both `src/i18n/en/common.json` and `src/i18n/th/common.json`, then throw `new XxxException('common.YOUR_KEY')`.
 
-**Current keys** (`common.*`): `USER_NOT_FOUND`, `BROKER_NOT_FOUND`, `REVIEW_NOT_FOUND`, `EMAIL_ALREADY_EXISTS`, `ALREADY_REVIEWED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`, `INVALID_RESET_TOKEN`, `PASSWORDS_DO_NOT_MATCH`, `SLUG_ALREADY_TAKEN`, `REVIEW_FORBIDDEN_EDIT`, `REVIEW_FORBIDDEN_DELETE`.
+**Current keys** (`common.*`): `USER_NOT_FOUND`, `BROKER_NOT_FOUND`, `REVIEW_NOT_FOUND`, `EMAIL_ALREADY_EXISTS`, `ALREADY_REVIEWED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`, `INVALID_RESET_TOKEN`, `PASSWORDS_DO_NOT_MATCH`, `SLUG_ALREADY_TAKEN`, `SLUG_GENERATION_FAILED`, `REVIEW_FORBIDDEN_EDIT`, `REVIEW_FORBIDDEN_DELETE`.
 
 ## JWT Auth Flow
 
@@ -485,10 +489,13 @@ Available at `/docs` in `development` and `test` environments (disabled in produ
 
 Always update `CLAUDE.md` and `README.md` in the same task whenever any of the following changes. Do not wait to be asked.
 
+**API spec regeneration:** Run `npm run spec:generate` whenever any of the following changes — it regenerates all files in `api-spec/` (per-module JSON + combined `openapi.json`) from live Swagger decorators. Run this in addition to the doc updates below.
+
 | Change type | What to update |
 |---|---|
 | Add / remove a module | Project structure tree, Module dependency graph, API endpoints table |
-| Add / remove an API endpoint | API endpoints table in both files |
+| Add / remove an API endpoint | API endpoints table in both files + run `npm run spec:generate` |
+| Change a DTO (request/response shape) | Run `npm run spec:generate` |
 | Add / remove a dependency (`package.json`) | Stack section in README, relevant section in CLAUDE.md |
 | Change entity schema | Entity schemas section |
 | Change env variables | Environment files section in both files, `.env.example` |

@@ -370,6 +370,31 @@
         ]
       }
     },
+    "/brokers/suggest-slug": {
+      "get": {
+        "operationId": "BrokersController_suggestSlug",
+        "parameters": [
+          {
+            "name": "name",
+            "required": true,
+            "in": "query",
+            "description": "Broker name to slugify",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Generate a unique slug from a broker name",
+        "tags": [
+          "brokers"
+        ]
+      }
+    },
     "/brokers/{slug}": {
       "get": {
         "operationId": "BrokersController_findOne",

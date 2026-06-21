@@ -9,6 +9,7 @@
   "INVALID_RESET_TOKEN": "Invalid or expired reset token",
   "PASSWORDS_DO_NOT_MATCH": "Passwords do not match",
   "SLUG_ALREADY_TAKEN": "Slug is already taken",
+  "SLUG_GENERATION_FAILED": "Unable to generate a unique slug, please try a different name",
   "REVIEW_FORBIDDEN_EDIT": "You can only edit your own review",
   "REVIEW_FORBIDDEN_DELETE": "You can only delete your own review"
 }
