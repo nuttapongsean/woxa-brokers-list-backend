@@ -19,6 +19,7 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -69,6 +70,18 @@ export class BrokersController {
   })
   findTypes() {
     return this.brokersService.findTypes();
+  }
+
+  @Public()
+  @Get('suggest-slug')
+  @ApiOperation({ summary: 'Generate a unique slug from a broker name' })
+  @ApiQuery({
+    name: 'name',
+    required: true,
+    description: 'Broker name to slugify',
+  })
+  suggestSlug(@Query('name') name: string) {
+    return this.brokersService.suggestSlug(name);
   }
 
   @Public()

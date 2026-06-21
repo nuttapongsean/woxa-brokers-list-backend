@@ -1,7 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -86,9 +89,29 @@ export class BrokersService {
     if (!coverImageFile)
       throw new BadRequestException('coverImage file is required');
 
-    const slug = dto.slug ?? slugify(dto.name);
-    const existing = await this.brokerRepo.findOne({ where: { slug } });
-    if (existing) throw new ConflictException('common.SLUG_ALREADY_TAKEN');
+    const baseSlug = slugify(dto.name);
+    let slug: string;
+
+    if (dto.slug) {
+      // User explicitly chose a slug — respect it or tell them it's taken
+      const conflict = await this.brokerRepo.findOne({
+        where: { slug: dto.slug },
+      });
+      if (conflict) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.CONFLICT,
+            message: 'common.SLUG_ALREADY_TAKEN',
+            suggestions: await this.findSlugSuggestions(dto.slug),
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
+      slug = dto.slug;
+    } else {
+      // Auto-generate: find the first available slug silently
+      slug = await this.resolveAvailableSlug(baseSlug);
+    }
 
     const [logoUrl, imageUrl, prospectusUrl] = await Promise.all([
       this.storageService.uploadImage(logoFile, 'brokers/logos'),
@@ -234,7 +257,16 @@ export class BrokersService {
       const conflict = await this.brokerRepo.findOne({
         where: { slug: dtoBrokerFields.slug },
       });
-      if (conflict) throw new ConflictException('common.SLUG_ALREADY_TAKEN');
+      if (conflict) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.CONFLICT,
+            message: 'common.SLUG_ALREADY_TAKEN',
+            suggestions: await this.findSlugSuggestions(dtoBrokerFields.slug),
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
     }
 
     const logoFile = files?.logo?.[0];
@@ -317,6 +349,59 @@ export class BrokersService {
 
     const updatedSlug = dtoBrokerFields.slug ?? broker.slug;
     return this.findOne(updatedSlug);
+  }
+
+  private async resolveAvailableSlug(base: string): Promise<string> {
+    const rows = await this.brokerRepo
+      .createQueryBuilder('broker')
+      .select('broker.slug', 'slug')
+      .where('broker.slug LIKE :pattern', { pattern: `${base}%` })
+      .getRawMany<{ slug: string }>();
+
+    const taken = new Set(rows.map((r) => r.slug));
+    if (!taken.has(base)) return base;
+
+    for (let i = 2; i <= 100; i++) {
+      const candidate = `${base}-${i}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+
+    return `${base}-${Math.floor(10000 + Math.random() * 90000)}`;
+  }
+
+  private async findSlugSuggestions(base: string): Promise<string[]> {
+    const rows = await this.brokerRepo
+      .createQueryBuilder('broker')
+      .select('broker.slug', 'slug')
+      .where('broker.slug LIKE :pattern', { pattern: `${base}%` })
+      .getRawMany<{ slug: string }>();
+
+    const taken = new Set(rows.map((r) => r.slug));
+    const suggestions: string[] = [];
+
+    for (let i = 2; suggestions.length < 3 && i <= 20; i++) {
+      const candidate = `${base}-${i}`;
+      if (!taken.has(candidate)) suggestions.push(candidate);
+    }
+
+    while (suggestions.length < 3) {
+      const suffix = Math.floor(10000 + Math.random() * 90000).toString();
+      suggestions.push(`${base}-${suffix}`);
+    }
+
+    return suggestions;
+  }
+
+  async suggestSlug(name: string): Promise<{ slug: string }> {
+    if (!name?.trim()) throw new BadRequestException('Name is required');
+    const base = slugify(name);
+    for (let i = 0; i < 10; i++) {
+      const suffix = Math.floor(10000 + Math.random() * 90000).toString();
+      const slug = `${base}-${suffix}`;
+      const existing = await this.brokerRepo.findOne({ where: { slug } });
+      if (!existing) return { slug };
+    }
+    throw new InternalServerErrorException('common.SLUG_GENERATION_FAILED');
   }
 
   async remove(id: string): Promise<void> {
