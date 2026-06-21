@@ -20,6 +20,16 @@ export class I18nExceptionFilter implements ExceptionFilter {
     const raw = exception.message;
     const message = this.i18n.t(raw, { lang, defaultValue: raw });
 
-    response.status(status).json({ statusCode: status, message });
+    const body = exception.getResponse();
+    const extra =
+      typeof body === 'object' && body !== null
+        ? Object.fromEntries(
+            Object.entries(body as Record<string, unknown>).filter(
+              ([k]) => k !== 'statusCode' && k !== 'message' && k !== 'error',
+            ),
+          )
+        : {};
+
+    response.status(status).json({ statusCode: status, message, ...extra });
   }
 }

@@ -158,7 +158,10 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('mock-access-token');
       expect(result.user.id).toBe('uuid-1');
       expect(mockSessionsService.create).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'uuid-1', tokenHash: expectedRefreshHash }),
+        expect.objectContaining({
+          userId: 'uuid-1',
+          tokenHash: expectedRefreshHash,
+        }),
       );
     });
 
@@ -186,17 +189,27 @@ describe('AuthService', () => {
 
       await service.logout('session-uuid-1');
 
-      expect(mockSessionsService.deleteById).toHaveBeenCalledWith('session-uuid-1');
+      expect(mockSessionsService.deleteById).toHaveBeenCalledWith(
+        'session-uuid-1',
+      );
     });
   });
 
   describe('refresh', () => {
     it('returns new token pair and rotates the session', async () => {
       const incomingToken = 'incoming-refresh-token';
-      const incomingHash = createHash('sha256').update(incomingToken).digest('hex');
+      const incomingHash = createHash('sha256')
+        .update(incomingToken)
+        .digest('hex');
 
-      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1', sid: 'session-uuid-1' });
-      mockSessionsService.findById.mockResolvedValue({ ...mockSession, tokenHash: incomingHash });
+      mockJwtService.verify.mockReturnValue({
+        sub: 'uuid-1',
+        sid: 'session-uuid-1',
+      });
+      mockSessionsService.findById.mockResolvedValue({
+        ...mockSession,
+        tokenHash: incomingHash,
+      });
       mockUsersService.findById.mockResolvedValue(mockUser);
       mockSessionsService.rotate.mockResolvedValue(undefined);
 
@@ -220,7 +233,10 @@ describe('AuthService', () => {
     });
 
     it('throws UnauthorizedException when session not found', async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1', sid: 'session-uuid-1' });
+      mockJwtService.verify.mockReturnValue({
+        sub: 'uuid-1',
+        sid: 'session-uuid-1',
+      });
       mockSessionsService.findById.mockResolvedValue(null);
 
       await expect(
@@ -229,7 +245,10 @@ describe('AuthService', () => {
     });
 
     it('deletes session and throws on token reuse (hash mismatch)', async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 'uuid-1', sid: 'session-uuid-1' });
+      mockJwtService.verify.mockReturnValue({
+        sub: 'uuid-1',
+        sid: 'session-uuid-1',
+      });
       mockSessionsService.findById.mockResolvedValue({
         ...mockSession,
         tokenHash: 'hash-that-does-not-match',
@@ -240,7 +259,9 @@ describe('AuthService', () => {
         service.refresh({ refreshToken: 'reused-token' }),
       ).rejects.toThrow(UnauthorizedException);
 
-      expect(mockSessionsService.deleteById).toHaveBeenCalledWith('session-uuid-1');
+      expect(mockSessionsService.deleteById).toHaveBeenCalledWith(
+        'session-uuid-1',
+      );
     });
   });
 
@@ -321,8 +342,13 @@ describe('AuthService', () => {
         confirmPassword: 'NewP@ss1',
       });
 
-      expect(mockUsersService.resetPassword).toHaveBeenCalledWith('uuid-1', '$2b$12$hashed');
-      expect(mockSessionsService.deleteAllByUserId).toHaveBeenCalledWith('uuid-1');
+      expect(mockUsersService.resetPassword).toHaveBeenCalledWith(
+        'uuid-1',
+        '$2b$12$hashed',
+      );
+      expect(mockSessionsService.deleteAllByUserId).toHaveBeenCalledWith(
+        'uuid-1',
+      );
     });
   });
 });

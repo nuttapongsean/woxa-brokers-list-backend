@@ -91,6 +91,27 @@ export class EnvironmentVariables {
   @Max(65535)
   @IsOptional()
   REDIS_PORT: number = 6379;
+
+  // ── S3 Storage ───────────────────────────────────────────────────
+  @IsString()
+  @IsOptional()
+  S3_ENDPOINT?: string;
+
+  @IsString()
+  @IsOptional()
+  S3_REGION?: string;
+
+  @IsString()
+  @IsOptional()
+  S3_BUCKET?: string;
+
+  @IsString()
+  @IsOptional()
+  S3_ACCESS_KEY_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  S3_SECRET_ACCESS_KEY?: string;
 }
 
 export function validate(

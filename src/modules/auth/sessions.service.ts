@@ -33,7 +33,10 @@ export class SessionsService {
   }
 
   async rotate(id: string, newTokenHash: string): Promise<void> {
-    await this.repo.update({ id }, { tokenHash: newTokenHash, lastUsedAt: new Date() });
+    await this.repo.update(
+      { id },
+      { tokenHash: newTokenHash, lastUsedAt: new Date() },
+    );
   }
 
   async deleteById(id: string): Promise<void> {
