@@ -93,7 +93,6 @@ export class BrokersService {
     let slug: string;
 
     if (dto.slug) {
-      // User explicitly chose a slug — respect it or tell them it's taken
       const conflict = await this.brokerRepo.findOne({
         where: { slug: dto.slug },
       });
@@ -109,7 +108,6 @@ export class BrokersService {
       }
       slug = dto.slug;
     } else {
-      // Auto-generate: find the first available slug silently
       slug = await this.resolveAvailableSlug(baseSlug);
     }
 
@@ -235,7 +233,7 @@ export class BrokersService {
       .getOne();
 
     if (!broker) throw new NotFoundException('common.BROKER_NOT_FOUND');
-    return broker;
+    return this.signBroker(broker);
   }
 
   private async findById(id: string): Promise<Broker> {
